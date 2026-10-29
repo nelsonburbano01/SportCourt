@@ -27,8 +27,10 @@ import {
 import {
   mostrarMensaje, limpiarMensaje, traducirErrorFirebase, confirmarModal,
   bloquearBoton, esFechaValida, esFechaPasada, esHoraValida, horaAMinutos,
-  formatearFechaLarga, fechaHoraEsPasada, minutosHasta, CONSTANTE
+  formatearFechaLarga, fechaHoraEsPasada, minutosHasta, hoyISO, sumarDiasISO
 } from "./utils.js";
+import { REGLAS } from "./config.js";
+import { listarBloqueosDeCanchaYFecha } from "./bloqueos.js";
 
 /* ---------- Utilidades de datos ---------- */
 
@@ -63,6 +65,42 @@ export async function validarAntesDeReservar(cancha, fecha, horaInicio, horaFin,
   if (fechaHoraEsPasada(fecha, horaInicio)) return "No se pueden reservar horarios que ya pasaron.";
   if (!estaDentroDelHorario(cancha, horaInicio, horaFin)) {
     return `El horario está fuera de la atención de la cancha (${cancha.horaApertura}–${cancha.horaCierre}).`;
+  }
+
+  // Sprint #6 (REGLAS): el horario no puede estar bloqueado por el admin.
+  try {
+    const bloqueosDelDia = await listarBloqueosDeCanchaYFecha(cancha.id, fecha);
+    const bloqueado = bloqueosDelDia.some((b) => b.horaInicio === horaInicio);
+    if (bloqueado) {
+      return "Este horario está bloqueado por el administrador (mantenimiento, torneo o clima). Elige otro horario.";
+    }
+  } catch (error) {
+    return traducirErrorFirebase(error, "No se pudo verificar si el horario está bloqueado.");
+  }
+
+  // Sprint #6 (REGLAS): anticipación máxima de RESERVED.
+  if (fecha > sumarDiasISO(hoyISO(), REGLAS.MAX_DIAS_ANTICIPACION)) {
+    return `Solo puedes reservar con un máximo de ${REGLAS.MAX_DIAS_ANTICIPACION} días de anticipación.`;
+  }
+
+  // Sprint #6 (REGLAS): máximo de reservas activas (futuras) por usuario.
+  try {
+    const qMax = query(
+      collection(db, "reservas"),
+      where("usuarioId", "==", uid),
+      where("estado", "==", "confirmada"),
+      where("fecha", ">=", hoyISO())
+    );
+    const snapMax = await getDocs(qMax);
+    const futuras = snapMax.docs.filter((d) => {
+      const r = d.data();
+      return r.fecha > hoyISO() || !fechaHoraEsPasada(r.fecha, r.horaFin);
+    });
+    if (futuras.length >= REGLAS.MAX_RESERVAS_ACTIVAS) {
+      return `Ya tienes ${futuras.length} reservas activas (el máximo permitido es ${REGLAS.MAX_RESERVAS_ACTIVAS}). Cancela alguna antes de reservar otra.`;
+    }
+  } catch (error) {
+    return traducirErrorFirebase(error, "No se pudieron verificar tus reservas activas.");
   }
 
   // ¿El usuario ya tiene otra reserva confirmada a la misma fecha/hora (en cualquier cancha)?
@@ -104,6 +142,17 @@ export async function crearReserva(cancha, fecha, horaInicio, horaFin) {
   const ref = doc(db, "reservas", idReserva(cancha.id, fecha, horaInicio));
 
   await runTransaction(db, async (transaccion) => {
+    // Sprint #6: si el horario está bloqueado, aborta aunque la validación
+    // inicial haya pasado (bloqueo creado entre tanto por el admin).
+    const bloqueoSnap = await transaccion.get(
+      doc(db, "bloqueos", idReserva(cancha.id, fecha, horaInicio))
+    );
+    if (bloqueoSnap.exists()) {
+      const err = new Error("Este horario fue bloqueado por el administrador. Elige otro horario.");
+      err.code = "horario-bloqueado";
+      throw err; // aborta la transacción
+    }
+
     const actual = await transaccion.get(ref);
     if (actual.exists()) {
       const datos = actual.data();
@@ -146,8 +195,8 @@ export async function cancelarReserva(reservaId) {
   if (datos.usuarioId !== usuario.uid) throw new Error("No puedes cancelar reservas de otro usuario.");
   if (datos.estado !== "confirmada") throw new Error("Esta reserva ya no está vigente.");
 
-  // Regla opcional de anticipación mínima (constante en utils.js, 0 = desactivada)
-  const minHoras = Number(CONSTANTE.config.minHorasAnticipacionCancelacion) || 0;
+  // Regla opcional de anticipación mínima (Sprint #6: pasa a config.js, 0 = desactivada)
+  const minHoras = Number(REGLAS.HORAS_MIN_CANCELAR) || 0;
   if (minHoras > 0) {
     const faltan = minutosHasta(datos.fecha, datos.horaInicio);
     if (faltan < minHoras * 60) {
