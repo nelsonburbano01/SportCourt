@@ -2,7 +2,7 @@ rules_version = '2';
 
 /**
  * ============================================================
- * Reglas de seguridad de Cloud Firestore — Sprint #4
+ * Reglas de seguridad de Cloud Firestore — Sprint #4 + Sprint #6
  * ============================================================
  * Publica este archivo en Firebase Console → Firestore Database → Rules
  * (o mediante Firebase CLI: `firebase deploy --only firestore:rules`).
@@ -18,6 +18,10 @@ rules_version = '2';
  *    confirmada; se puede ACTUALIZAR para cancelar la propia o reutilizar
  *    un horario ya cancelado; el admin puede modificar cualquiera
  *    (cancelar reservas de otros) y es el único que puede eliminar.
+ *    Sprint #6: no se puede crear ni reactivar una reserva cuyo ID coincide
+ *    con un documento de "bloqueos" (horario bloqueado por el admin).
+ *  - "bloqueos" (Sprint #6): cualquier autenticado puede leer (la app los
+ *    muestra como "Bloqueado"); solo el admin puede crear/eliminar.
  *  - Ocultar botones en la interfaz NO es seguridad: estas reglas son
  *    la protección real del backend.
  */
@@ -80,7 +84,8 @@ service cloud.firestore {
                     && request.resource.data.canchaId is string
                     && request.resource.data.fecha is string
                     && request.resource.data.horaInicio is string
-                    && request.resource.data.horaFin is string;
+                    && request.resource.data.horaFin is string
+                    && !exists(/databases/$(database)/documents/bloqueos/$(reservaId));
 
       // Reescribir una reserva cancelada propia (volver a reservar el mismo
       // horario) o cancelar la propia; el admin puede modificar cualquiera
@@ -88,6 +93,9 @@ service cloud.firestore {
       allow update: if esAdmin()
                     || (usuarioActivo()
                         && request.resource.data.usuarioId == request.auth.uid
+                        && (resource.data.estado != 'cancelada'
+                            || request.resource.data.estado != 'confirmada'
+                            || !exists(/databases/$(database)/documents/bloqueos/$(reservaId)))
                         && (
                           // cancelar la propia
                           (resource.data.usuarioId == request.auth.uid
@@ -98,6 +106,15 @@ service cloud.firestore {
                         ));
 
       allow delete: if esAdmin();
+    }
+
+    // Sprint #6: bloqueos de horarios (mantenimiento, torneos, clima).
+    // Un documento por hora bloqueada, con el mismo ID determinista que
+    // las reservas. Todos los autenticados leen (la disponibilidad muestra
+    // "Bloqueado"); solo el admin crea/elimina.
+    match /bloqueos/{bloqueoId} {
+      allow read: if estaAutenticado();
+      allow create, update, delete: if esAdmin();
     }
 
     // Denegar todo lo demás por defecto.

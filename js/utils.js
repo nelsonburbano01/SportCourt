@@ -188,6 +188,21 @@ export function minutosAHora(minutos) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
+/**
+ * Horas EN PUNTO comprendidas en un rango [inicio, fin) — Sprint #6.
+ * Devuelve una lista de cadenas "HH:mm" para bloquear/reservar por bloques
+ * de 1 hora. Vacía si el rango es inválido (fin <= inicio).
+ *   horasDelRango("18:00", "21:00") → ["18:00", "19:00", "20:00"]
+ */
+export function horasDelRango(inicio, fin) {
+  const ini = horaAMinutos(inicio);
+  const f = horaAMinutos(fin);
+  if (Number.isNaN(ini) || Number.isNaN(f) || f <= ini) return [];
+  const horas = [];
+  for (let m = ini; m < f; m += 60) horas.push(minutosAHora(m));
+  return horas;
+}
+
 /** Fecha local de hoy como "YYYY-MM-DD" (para el atributo min de <input type=date>). */
 export function hoyISO() {
   const d = new Date();
@@ -332,18 +347,6 @@ export function exportarCSV(nombreArchivo, cabeceras, filas) {
    Configuración y helpers del Sprint #3 (reservas)
    ============================================================ */
 
-/**
- * Configuración general del sistema.
- * minHorasAnticipacionCancelacion: horas mínimas de anticipación para
- * poder cancelar una reserva. Por defecto 0 = regla desactivada.
- * Cámbiala aquí o en la consola con:
- *   CONSTANTE.config.minHorasAnticipacionCancelacion = 24;
- */
-export const CONSTANTE = {
-  config: {
-    minHorasAnticipacionCancelacion: 0
-  }
-};
 
 /** ¿Ya pasó el instante fecha("YYYY-MM-DD") + hora("HH:mm") en hora local? */
 export function fechaHoraEsPasada(fecha, hora) {

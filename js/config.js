@@ -8,7 +8,9 @@
  *
  * HORAS_MIN_CANCELAR reemplaza la antigua constante del Sprint #3
  * (CONSTANTE.config.minHorasAnticipacionCancelacion en utils.js),
- * que fue movida aquí para no duplicarla.
+ * que fue movida aquí para no duplicarla. Este archivo es ahora la
+ * ÚNICA fuente de estas reglas: reservas.js y disponibilidad.js lo
+ * importan para validar antes de reservar/cancelar.
  */
 
 export const REGLAS = {
