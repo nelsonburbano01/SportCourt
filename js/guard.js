@@ -125,6 +125,7 @@ async function pintarNavbar(usuario) {
     ${admin ? `<a href="${enlace("pages/admin-reservas.html")}">Reservas</a>` : ""}
     ${admin ? `<a href="${enlace("pages/admin-usuarios.html")}">Usuarios</a>` : ""}
     ${admin ? `<a href="${enlace("pages/admin-reportes.html")}">Reportes</a>` : ""}
+    ${admin ? `<a href="${enlace("pages/admin-bloqueos.html")}">Bloqueos</a>` : ""}
     <a href="${enlace("pages/perfil.html")}">Mi perfil</a>
     <span id="nav-saludo">${nombre ? `Hola, ${nombre} 👋` : "Sesión activa"}${admin ? " · Admin" : ""}</span>
     <a href="#" id="btn-logout" class="btn-nav">Cerrar sesión</a>

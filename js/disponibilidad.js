@@ -22,6 +22,7 @@ import {
   horaAMinutos, minutosAHora, formatearFechaLarga, confirmarModal, bloquearBoton
 } from "./utils.js";
 import { validarAntesDeReservar, crearReserva } from "./reservas.js";
+import { listarBloqueosDeCanchaYFecha } from "./bloqueos.js";
 
 /* ============================================================
    Lógica pura y reutilizable (la usará el Sprint #3)
@@ -34,9 +35,11 @@ import { validarAntesDeReservar, crearReserva } from "./reservas.js";
  * @param {object} cancha - { horaApertura: "HH:mm", horaCierre: "HH:mm" }
  * @param {string} fecha - "YYYY-MM-DD" (no debe ser pasada; se valida aquí también)
  * @param {Array<{horaInicio: string, horaFin: string}>} reservas - reservas CONFIRMADAS del día
- * @returns {Array<{inicio: string, fin: string, estado: "disponible"|"ocupado"|"pasado"}>}
+ * @param {Array<{horaInicio: string, horaFin: string, motivo?: string}>} [bloqueos=[]] -
+ *        bloqueos de horario del Sprint #6 (marcan el bloque como "bloqueado")
+ * @returns {Array<{inicio: string, fin: string, estado: "disponible"|"ocupado"|"pasado"|"bloqueado", motivo?: string}>}
  */
-export function generarBloques(cancha, fecha, reservas) {
+export function generarBloques(cancha, fecha, reservas, bloqueos = []) {
   const bloques = [];
   const aperturas = horaAMinutos(cancha.horaApertura);
   const cierres = horaAMinutos(cancha.horaCierre);
@@ -48,6 +51,13 @@ export function generarBloques(cancha, fecha, reservas) {
     fin: horaAMinutos(r.horaFin)
   })).filter((i) => !Number.isNaN(i.ini) && !Number.isNaN(i.fin));
 
+  // Bloqueos del Sprint #6: intervalos bloqueados por el admin, con su motivo.
+  const bloqueosIntervalos = (bloqueos || []).map((b) => ({
+    ini: horaAMinutos(b.horaInicio),
+    fin: horaAMinutos(b.horaFin),
+    motivo: b.motivo || ""
+  })).filter((i) => !Number.isNaN(i.ini) && !Number.isNaN(i.fin));
+
   // Si la fecha consultada es hoy, los bloques cuya hora de inicio ya pasó
   // no están disponibles.
   const esHoy = fecha === hoyISO();
@@ -57,9 +67,14 @@ export function generarBloques(cancha, fecha, reservas) {
   for (let inicio = aperturas; inicio + 60 <= cierres; inicio += 60) {
     const fin = inicio + 60;
     let estado = "disponible";
+    let motivo = "";
 
+    const bloqueado = bloqueosIntervalos.find((b) => b.ini < fin && b.fin > inicio);
     const ocupada = intervalos.some((i) => i.ini < fin && i.fin > inicio);
-    if (ocupada) {
+    if (bloqueado) {
+      estado = "bloqueado";
+      motivo = bloqueado.motivo;
+    } else if (ocupada) {
       estado = "ocupado";
     } else if (esHoy && inicio <= minutosAhora) {
       estado = "pasado";
@@ -68,7 +83,8 @@ export function generarBloques(cancha, fecha, reservas) {
     bloques.push({
       inicio: minutosAHora(inicio),
       fin: minutosAHora(fin),
-      estado
+      estado,
+      ...(motivo ? { motivo } : {})
     });
   }
 
@@ -118,8 +134,11 @@ async function cargarDisponibilidad() {
     <div class="indicador-carga"><span class="spinner"></span> Consultando horarios...</div>`;
 
   try {
-    const reservas = await obtenerReservasDelDia(canchaActual.id, fechaInput);
-    const bloques = generarBloques(canchaActual, fechaInput, reservas);
+    const [reservas, bloqueos] = await Promise.all([
+      obtenerReservasDelDia(canchaActual.id, fechaInput),
+      listarBloqueosDeCanchaYFecha(canchaActual.id, fechaInput)
+    ]);
+    const bloques = generarBloques(canchaActual, fechaInput, reservas, bloqueos);
     pintarBloques(bloques, fechaInput);
   } catch (error) {
     contenedor.innerHTML = "";
@@ -135,8 +154,11 @@ async function refrescarBloques() {
   const aviso = document.getElementById("mensaje-disponibilidad");
   if (!canchaActual || !ultimaFechaConsultada) return;
   try {
-    const reservas = await obtenerReservasDelDia(canchaActual.id, ultimaFechaConsultada);
-    const bloques = generarBloques(canchaActual, ultimaFechaConsultada, reservas);
+    const [reservas, bloqueos] = await Promise.all([
+      obtenerReservasDelDia(canchaActual.id, ultimaFechaConsultada),
+      listarBloqueosDeCanchaYFecha(canchaActual.id, ultimaFechaConsultada)
+    ]);
+    const bloques = generarBloques(canchaActual, ultimaFechaConsultada, reservas, bloqueos);
     pintarBloques(bloques, ultimaFechaConsultada);
   } catch (_) {
     mostrarMensaje(aviso, "error", "No se pudo actualizar la disponibilidad. Pulsa CONSULTAR HORARIOS de nuevo.");
@@ -261,6 +283,7 @@ function pintarBloques(bloques, fecha) {
   leyenda.innerHTML = `
     <span><span class="cuadro cuadro-disponible"></span>Disponible</span>
     <span><span class="cuadro cuadro-ocupado"></span>Ocupado</span>
+    <span><span class="cuadro cuadro-bloqueado"></span>Bloqueado</span>
     <span><span class="cuadro cuadro-pasado"></span>Ya pasó (hoy)</span>`;
   contenedor.appendChild(leyenda);
 
@@ -287,6 +310,16 @@ function pintarBloques(bloques, fecha) {
     } else if (bloque.estado === "ocupado") {
       btn.textContent = "Ocupado";
       btn.disabled = true;
+    } else if (bloque.estado === "bloqueado") {
+      btn.textContent = "Bloqueado";
+      btn.disabled = true;
+      btn.title = bloque.motivo ? `Motivo: ${bloque.motivo}` : "Horario bloqueado por el administrador";
+      if (bloque.motivo) {
+        const motivo = document.createElement("small");
+        motivo.className = "motivo-bloqueo";
+        motivo.textContent = bloque.motivo;
+        div.appendChild(motivo);
+      }
     } else {
       btn.textContent = "No disponible";
       btn.disabled = true;

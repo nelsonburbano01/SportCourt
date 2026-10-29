@@ -589,6 +589,7 @@ footer {
 
 .cuadro-disponible { background: var(--verde); }
 .cuadro-ocupado { background: #b9c2cb; }
+.cuadro-bloqueado { background: #d98324; }
 .cuadro-pasado { background: #e8a4a4; }
 
 .grid-horarios {
@@ -623,6 +624,19 @@ footer {
   background: #eceff2;
   color: #7c8794;
   text-decoration: line-through;
+}
+
+.bloque-bloqueado {
+  background: #fdf3e6;
+  border-color: #ecc48f;
+  color: #9a5b12;
+}
+
+.motivo-bloqueo {
+  font-weight: 400;
+  font-size: 0.7rem;
+  color: #9a5b12;
+  overflow-wrap: anywhere;
 }
 
 .bloque-pasado {

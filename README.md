@@ -476,6 +476,37 @@ Las consultas por rango usan `where('fecha','>=',desde)` + `where('fecha','<=',h
 - ✅ Sprint #3: Gestión de reservas: reservar, consultar y cancelar
 - ✅ Sprint #4: Administración de reservas y gestión de usuarios (panel de admin)
 - ✅ Sprint #5: Panel de control y reportes (indicadores, ingresos, CSV e impresión)
+- ✅ Sprint #6: Bloqueo de horarios por el administrador (mantenimiento, torneos, clima)
+
+### Sprint #6: Bloqueo de horarios
+
+El administrador puede bloquear rangos de horas de una cancha en una fecha
+(mantenimiento, torneos, clima). Cada hora bloqueada es un documento de la
+colección `bloqueos` con el mismo ID determinista que las reservas
+(`canchaId_fecha_horaInicio`), lo que permite:
+
+- La transacción de `crearReserva()` lee `bloqueos/{id}` y aborta si el
+  horario está bloqueado (protege también contra condiciones de carrera).
+- Las reglas de Firestore verifican con `exists()` que no exista un bloqueo
+  antes de permitir crear una reserva.
+- `disponibilidad.js` muestra los bloques como **"Bloqueado"** con su motivo
+  (leyenda naranja en la cuadrícula de horarios).
+
+Archivos del sprint: `js/bloqueos.js` (lógica de datos), `js/admin-bloqueos.js`
+y `pages/admin-bloqueos.html` (página de administración), `js/config.js`
+(reglas constantes del sistema) y la sección `bloqueos` de `firestore.rules`.
+
+**Cómo probar el Sprint #6:**
+
+1. Como admin, entrar a **Bloqueos** (navbar) y crear un bloqueo de cancha +
+   fecha + rango de horas con motivo → se crea un documento por hora.
+2. Intentar bloquear una franja con reservas confirmadas → la transacción
+   aborta y muestra qué horarios están reservados.
+3. Consultar la disponibilidad de esa cancha/fecha como usuario normal → los
+   bloques aparecen como "Bloqueado" con el motivo y no se puede reservar.
+4. Levantar un bloqueo (modal de confirmación) → los horarios vuelven a
+   estar disponibles.
+5. Usuario no admin abre `pages/admin-bloqueos.html` por URL → es redirigido.
 
 ## 📄 Licencia
 
