@@ -1,18 +1,1 @@
-# Dependencias locales (si se añade build en el futuro)
-node_modules/
-
-# Configuración de entorno / credenciales (NUNCA subir claves reales)
-.env
-.env.*
-*.local
-
-# Archivos de sistema
-.DS_Store
-Thumbs.db
-
-# Editores / IDE
-.vscode/
-.idea/
-
-# Logs
-*.log
+*.bundle
