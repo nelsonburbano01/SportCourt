@@ -15,9 +15,9 @@
 import { db } from "./firebase-config.js";
 import {
   collection, getDocs, getDoc, addDoc, updateDoc, deleteDoc, doc, query, where
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import { auth } from "./firebase-config.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { esAdmin, enlace } from "./guard.js";
 import {
   mostrarMensaje, limpiarMensaje, bloquearBoton, traducirErrorFirebase,

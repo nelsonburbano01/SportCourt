@@ -15,7 +15,7 @@
 import { db, auth } from "./firebase-config.js";
 import {
   collection, doc, getDoc, getDocs, query, where
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 // (no se necesita enlace aquí; guard.js carga igual para la navbar y protección)
 import {
   mostrarMensaje, limpiarMensaje, esFechaValida, esFechaPasada, hoyISO,

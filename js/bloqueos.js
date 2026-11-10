@@ -23,7 +23,7 @@
 import { db } from "./firebase-config.js";
 import {
   collection, doc, getDocs, query, where, runTransaction, writeBatch, serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import { hoyISO, esFechaValida, esHoraValida, horasDelRango, minutosAHora, horaAMinutos } from "./utils.js";
 import { idReserva } from "./reservas.js";
 

@@ -14,7 +14,7 @@
  */
 
 import { db } from "../js/firebase-config.js";
-import { collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const CANCHAS_DE_EJEMPLO = [
   {
