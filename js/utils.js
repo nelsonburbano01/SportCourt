@@ -139,7 +139,13 @@ const MENSAJES_FIREBASE = {
   "auth/operation-not-allowed":
     "El registro con correo/contraseña no está habilitado en Firebase.",
   "auth/missing-password": "Ingresa tu contraseña actual.",
-  "auth/missing-email": "Ingresa tu correo electrónico."
+  "auth/missing-email": "Ingresa tu correo electrónico.",
+  "permission-denied":
+    "No tienes permiso para esta acción. Revisa que las reglas de Firestore estén publicadas y que tu perfil exista.",
+  "not-found": "No encontramos tu perfil en la base de datos.",
+  "unavailable": "No se pudo conectar con la base de datos.",
+  "failed-precondition":
+    "La base de datos no está lista. Verifica que Firestore esté creado."
 };
 
 /**

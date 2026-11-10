@@ -104,6 +104,7 @@
         document.getElementById("telefono").value = perfil?.telefono || "";
         document.getElementById("correo").value = usuario.email || "";
       } catch (error) {
+        console.error("Error de perfil:", error.code, error.message);
         mostrarMensaje(msgPerfil, "error", traducirErrorFirebase(error, "No se pudieron cargar tus datos."));
       }
     });
@@ -130,6 +131,7 @@
         await actualizarPerfil(auth.currentUser.uid, { nombre, telefono });
         mostrarMensaje(msgPerfil, "exito", "✅ Perfil actualizado correctamente.");
       } catch (error) {
+        console.error("Error de perfil:", error.code, error.message);
         mostrarMensaje(msgPerfil, "error", traducirErrorFirebase(error, "No se pudo guardar el perfil."));
       } finally {
         desbloquear();
@@ -164,6 +166,7 @@
         mostrarMensaje(msgPass, "exito", "✅ Tu contraseña fue actualizada correctamente.");
         formPass.reset();
       } catch (error) {
+        console.error("Error de perfil:", error.code, error.message);
         mostrarMensaje(msgPass, "error", traducirErrorFirebase(error, "No se pudo cambiar la contraseña."));
       } finally {
         desbloquear();
