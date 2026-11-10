@@ -229,9 +229,17 @@ export async function initListadoCanchas() {
 
   onAuthStateChanged(auth, async (usuario) => {
     if (!usuario) return; // guard.js redirige al login
-    esAdminActual = await esAdmin();
-    if (btnRegistrar) btnRegistrar.hidden = !esAdminActual;
-    await cargarCanchas();
+    try {
+      esAdminActual = await esAdmin();
+      if (btnRegistrar) btnRegistrar.hidden = !esAdminActual;
+      await cargarCanchas();
+    } catch (error) {
+      console.error("Error al leer el perfil:", error.code, error.message);
+      mostrarMensaje(document.getElementById("mensaje-canchas"), "error", traducirErrorFirebase(
+        error,
+        "No se pudo leer tu perfil. Revisa la conexión y las reglas de Firestore."
+      ));
+    }
   });
 
   document.getElementById("filtro-tipo").addEventListener("change", pintarLista);
@@ -346,7 +354,18 @@ export async function initFormularioCancha() {
 
   // Solo administradores (la protección real son las reglas de Firestore;
   // guard.js ya redirige si data-page="admin", pero revalidamos aquí).
-  if (!(await esAdmin())) {
+  let administrador;
+  try {
+    administrador = await esAdmin();
+  } catch (error) {
+    console.error("Error al leer el perfil:", error.code, error.message);
+    mostrarMensaje(document.getElementById("mensaje-form"), "error", traducirErrorFirebase(
+      error,
+      "No se pudo verificar tu perfil. Revisa la conexión y las reglas de Firestore."
+    ));
+    return;
+  }
+  if (!administrador) {
     window.location.replace(enlace("pages/dashboard.html"));
     return;
   }

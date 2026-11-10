@@ -23,6 +23,7 @@
 import { auth, db } from "./firebase-config.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { mostrarMensaje, traducirErrorFirebase } from "./utils.js";
 
 /* Detecta la carpeta base del sitio (funciona en GitHub Pages con subruta). */
 const BASE = calcularBase();
@@ -50,19 +51,20 @@ function enlace(destino) {
 /* ---------- Rol de usuario (Sprint #2) ---------- */
 
 let perfilCache = null; // documento de Firestore del usuario en sesión
+let resolverAuthInicial;
+let authInicialResuelta = false;
+const authInicializada = new Promise((resolve) => {
+  resolverAuthInicial = resolve;
+});
 
 /** Lee el documento de perfil del usuario (con caché por sesión). */
 async function obtenerPerfil(usuario) {
   if (!usuario) return null;
   if (perfilCache && perfilCache.uid === usuario.uid) return perfilCache.perfil;
-  try {
-    const snap = await getDoc(doc(db, "usuarios", usuario.uid));
-    const perfil = snap.exists() ? snap.data() : null;
-    perfilCache = { uid: usuario.uid, perfil };
-    return perfil;
-  } catch (_) {
-    return null;
-  }
+  const snap = await getDoc(doc(db, "usuarios", usuario.uid));
+  const perfil = snap.exists() ? snap.data() : null;
+  perfilCache = { uid: usuario.uid, perfil };
+  return perfil;
 }
 
 /**
@@ -71,6 +73,7 @@ async function obtenerPerfil(usuario) {
  * ⚠️ La protección real son las reglas de firestore.rules; esto es UX.
  */
 export async function esAdmin() {
+  await authInicializada;
   const usuario = auth.currentUser;
   if (!usuario) return false;
   const perfil = await obtenerPerfil(usuario);
@@ -154,28 +157,45 @@ function irAlDashboard(mensaje) {
 }
 
 onAuthStateChanged(auth, async (usuario) => {
-  if (requiereSesion && !usuario) {
-    redirigirALogin();
-    return;
+  if (!authInicialResuelta) {
+    authInicialResuelta = true;
+    resolverAuthInicial();
   }
-  // Sprint #4: si la sesión abierta pertenece a una cuenta desactivada,
-  // se cierra y se redirige al login con el mensaje correspondiente.
-  if (usuario && await cerrarSesionSiInactivo(usuario)) {
-    return;
-  }
-  if (esPaginaAuthPublica && usuario) {
-    // Login/registro con sesión activa → directo al dashboard.
-    irAlDashboard();
-    return;
-  }
-  if (esPaginaAdmin && usuario) {
-    const perfil = await obtenerPerfil(usuario);
-    if (!perfil || perfil.rol !== "admin") {
-      irAlDashboard("No tienes permisos de administrador para acceder a esa página.");
+  try {
+    if (requiereSesion && !usuario) {
+      redirigirALogin();
       return;
     }
+    // Sprint #4: si la sesión abierta pertenece a una cuenta desactivada,
+    // se cierra y se redirige al login con el mensaje correspondiente.
+    if (usuario && await cerrarSesionSiInactivo(usuario)) {
+      return;
+    }
+    if (esPaginaAuthPublica && usuario) {
+      // Login/registro con sesión activa → directo al dashboard.
+      irAlDashboard();
+      return;
+    }
+    if (esPaginaAdmin && usuario) {
+      const perfil = await obtenerPerfil(usuario);
+      if (!perfil || perfil.rol !== "admin") {
+        irAlDashboard("No tienes permisos de administrador para acceder a esa página.");
+        return;
+      }
+    }
+    await pintarNavbar(usuario);
+  } catch (error) {
+    console.error("Error al leer el perfil:", error.code, error.message);
+    const aviso = document.getElementById("mensaje-admin-usuarios")
+      || document.getElementById("mensaje-admin-reservas")
+      || document.getElementById("mensaje-form");
+    if (aviso) {
+      mostrarMensaje(aviso, "error", traducirErrorFirebase(
+        error,
+        "No se pudo leer tu perfil. Revisa la conexión y las reglas de Firestore."
+      ));
+    }
   }
-  pintarNavbar(usuario);
 });
 
 export { enlace, BASE };

@@ -360,7 +360,18 @@ export async function initAdminUsuarios() {
   if (!contenedor || !aviso) return;
 
   // Doble control: guard.js ya redirige a no-admins; verificamos igualmente.
-  if (!(await esAdmin())) {
+  let administrador;
+  try {
+    administrador = await esAdmin();
+  } catch (error) {
+    console.error("Error al leer el perfil:", error.code, error.message);
+    mostrarMensaje(aviso, "error", traducirErrorFirebase(
+      error,
+      "No se pudo verificar tu perfil. Revisa la conexión y las reglas de Firestore."
+    ));
+    return;
+  }
+  if (!administrador) {
     mostrarMensaje(aviso, "error", "No tienes permisos de administrador.");
     return;
   }
